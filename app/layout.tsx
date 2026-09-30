@@ -1,8 +1,9 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { DashboardShell } from "@/components/layout/dashboard-shell";
 import { PgStoreProvider } from "@/context/pg-store";
 import { ToastProvider } from "@/context/toast";
+import { WorkspaceProvider } from "@/context/workspace";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -16,8 +17,16 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Sky PG Management",
-  description: "Frontend dashboard for managing PG rooms, beds, and tenants.",
+  title: {
+    default: "Sky PG Management",
+    template: "%s · Sky PG",
+  },
+  description: "Manage PG rooms, beds, tenants and rent reminders.",
+};
+
+export const viewport: Viewport = {
+  themeColor: "#070e1c",
+  viewportFit: "cover",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
@@ -29,7 +38,9 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       <body className="min-h-full font-sans">
         <PgStoreProvider>
           <ToastProvider>
-            <DashboardShell>{children}</DashboardShell>
+            <WorkspaceProvider>
+              <DashboardShell>{children}</DashboardShell>
+            </WorkspaceProvider>
           </ToastProvider>
         </PgStoreProvider>
       </body>

@@ -1,39 +1,43 @@
-import { loadRooms, loadTenants, saveRooms, saveTenants } from "@/lib/storage";
-import type { Room, Tenant } from "@/lib/types";
+import { fetchPgData } from "@/lib/data/pg-service";
+import { subscribeToExternalChanges } from "@/lib/data/local-storage";
+import type { PgData } from "@/lib/types";
 
-export type PgSnapshot = {
-  rooms: Room[];
-  tenants: Tenant[];
-};
+/** In-memory cache of the dataset, shared by every component via `useSyncExternalStore`. */
+export type PgSnapshot = PgData & { ready: boolean };
 
-const EMPTY_SNAPSHOT: PgSnapshot = { rooms: [], tenants: [] };
+const SERVER_SNAPSHOT: PgSnapshot = { rooms: [], tenants: [], ready: false };
 
-let snapshot: PgSnapshot = EMPTY_SNAPSHOT;
-let loaded = false;
+let snapshot: PgSnapshot = SERVER_SNAPSHOT;
+let loading = false;
 const listeners = new Set<() => void>();
+let stopExternal: (() => void) | null = null;
 
 function emit() {
   listeners.forEach((listener) => listener());
 }
 
-function loadIfNeeded() {
-  if (loaded || typeof window === "undefined") {
-    return;
-  }
-  snapshot = {
-    rooms: loadRooms(),
-    tenants: loadTenants(),
-  };
-  loaded = true;
+async function refresh() {
+  const data = await fetchPgData();
+  snapshot = { ...data, ready: true };
+  emit();
 }
 
 export function subscribeToPgStore(listener: () => void) {
   listeners.add(listener);
-  queueMicrotask(() => {
-    loadIfNeeded();
-    emit();
-  });
-  return () => listeners.delete(listener);
+  if (!snapshot.ready && !loading) {
+    loading = true;
+    void refresh().finally(() => {
+      loading = false;
+    });
+  }
+  stopExternal ??= subscribeToExternalChanges(() => void refresh());
+  return () => {
+    listeners.delete(listener);
+    if (listeners.size === 0) {
+      stopExternal?.();
+      stopExternal = null;
+    }
+  };
 }
 
 export function getPgSnapshot() {
@@ -41,19 +45,10 @@ export function getPgSnapshot() {
 }
 
 export function getPgServerSnapshot() {
-  return EMPTY_SNAPSHOT;
+  return SERVER_SNAPSHOT;
 }
 
-export function replaceRooms(rooms: Room[]) {
-  loadIfNeeded();
-  snapshot = { ...snapshot, rooms };
-  saveRooms(rooms);
-  emit();
-}
-
-export function replaceTenants(tenants: Tenant[]) {
-  loadIfNeeded();
-  snapshot = { ...snapshot, tenants };
-  saveTenants(tenants);
+export function setPgData(data: PgData) {
+  snapshot = { ...data, ready: true };
   emit();
 }

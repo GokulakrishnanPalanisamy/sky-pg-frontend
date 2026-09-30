@@ -2,88 +2,108 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import {
-  BedDouble,
-  Building2,
-  LayoutDashboard,
-  Users,
-  X,
-} from "lucide-react";
+import { BrandMark } from "@/components/layout/brand";
+import { isActivePath, NAV_ITEMS } from "@/components/layout/nav-items";
 
-const NAV_ITEMS = [
-  { href: "/", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/rooms", label: "Rooms", icon: BedDouble },
-  { href: "/tenants", label: "Tenants", icon: Users },
-];
-
-type SidebarProps = {
-  open: boolean;
-  onClose: () => void;
-};
-
-export function Sidebar({ open, onClose }: SidebarProps) {
+/**
+ * Desktop (lg+): full sidebar with labels.
+ * Tablet (md–lg): compact icon rail; labels stay available to screen readers.
+ * Mobile: hidden — the bottom tab bar takes over.
+ */
+export function Sidebar() {
   const pathname = usePathname();
 
   return (
-    <>
-      <button
-        type="button"
-        className={`fixed inset-0 z-30 bg-slate-900/40 lg:hidden ${open ? "block" : "hidden"}`}
-        aria-label="Close navigation"
-        onClick={onClose}
-      />
-      <aside
-        className={`fixed inset-y-0 left-0 z-40 flex w-64 flex-col border-r border-slate-200 bg-slate-950 text-white transition-transform lg:static lg:translate-x-0 ${
-          open ? "translate-x-0" : "-translate-x-full"
-        }`}
+    <aside className="sticky top-0 hidden h-dvh w-[76px] shrink-0 flex-col bg-navy-950 text-white md:flex lg:w-64">
+      <Link
+        href="/"
+        className="flex h-[72px] items-center justify-center gap-3 px-4 lg:justify-start lg:px-5"
+        aria-label="Sky PG Management — Dashboard"
       >
-        <div className="flex h-16 items-center justify-between px-5">
-          <Link href="/" className="flex items-center gap-2.5" onClick={onClose}>
-            <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-teal-500">
-              <Building2 className="h-5 w-5" />
-            </span>
-            <span>
-              <span className="block text-sm font-semibold tracking-wide">Sky PG</span>
-              <span className="block text-[11px] text-slate-400">Management</span>
-            </span>
-          </Link>
-          <button
-            type="button"
-            className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-800 lg:hidden"
-            onClick={onClose}
-            aria-label="Close sidebar"
+        <BrandMark />
+        <span className="hidden lg:block">
+          <span className="block text-[15px] font-semibold tracking-tight">Sky PG</span>
+          <span className="block text-xs text-slate-400">Management</span>
+        </span>
+      </Link>
+
+      <nav aria-label="Main" className="flex flex-1 flex-col gap-1 px-3 pt-4">
+        {NAV_ITEMS.map((item) => {
+          const Icon = item.icon;
+          const active = isActivePath(pathname, item.href);
+          return (
+            <Link
+              key={item.href}
+              href={item.href}
+              title={item.label}
+              aria-current={active ? "page" : undefined}
+              className={`group relative flex h-11 items-center justify-center gap-3 rounded-xl px-3 text-sm font-medium transition-colors lg:justify-start ${
+                active
+                  ? "bg-linear-to-r from-teal-500/20 to-teal-500/5 text-white ring-1 ring-inset ring-teal-400/20"
+                  : "text-slate-400 hover:bg-white/5 hover:text-white"
+              }`}
+            >
+              {active ? (
+                <span className="absolute inset-y-2.5 left-0 w-[3px] rounded-r-full bg-teal-400" aria-hidden />
+              ) : null}
+              <Icon className={`size-5 shrink-0 ${active ? "text-teal-300" : ""}`} aria-hidden />
+              <span className="sr-only lg:not-sr-only">{item.label}</span>
+            </Link>
+          );
+        })}
+      </nav>
+
+      <div className="p-3">
+        <div className="flex items-center justify-center gap-3 rounded-xl bg-white/5 p-2.5 ring-1 ring-inset ring-white/5 lg:justify-start">
+          <span
+            className="flex size-9 shrink-0 items-center justify-center rounded-full bg-slate-700 text-sm font-semibold text-slate-100"
+            aria-hidden
           >
-            <X className="h-5 w-5" />
-          </button>
+            S
+          </span>
+          <span className="hidden min-w-0 lg:block">
+            <span className="block truncate text-sm font-medium">Sky PG</span>
+            <span className="block truncate text-xs text-slate-400">Property owner</span>
+          </span>
         </div>
-        <nav className="flex flex-1 flex-col gap-1 px-3 py-4">
-          {NAV_ITEMS.map((item) => {
-            const Icon = item.icon;
-            const active =
-              item.href === "/"
-                ? pathname === "/"
-                : pathname.startsWith(item.href);
-            return (
+      </div>
+    </aside>
+  );
+}
+
+export function MobileTabBar() {
+  const pathname = usePathname();
+  return (
+    <nav
+      aria-label="Main"
+      className="fixed inset-x-0 bottom-0 z-30 border-t border-slate-200 bg-white/95 pb-[env(safe-area-inset-bottom)] backdrop-blur md:hidden"
+    >
+      <ul className="grid grid-cols-3">
+        {NAV_ITEMS.map((item) => {
+          const Icon = item.icon;
+          const active = isActivePath(pathname, item.href);
+          return (
+            <li key={item.href}>
               <Link
-                key={item.href}
                 href={item.href}
-                onClick={onClose}
-                className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition ${
-                  active
-                    ? "bg-teal-500 text-white"
-                    : "text-slate-300 hover:bg-slate-800 hover:text-white"
+                aria-current={active ? "page" : undefined}
+                className={`flex h-16 flex-col items-center justify-center gap-1 text-[11px] font-medium transition-colors ${
+                  active ? "text-teal-700" : "text-slate-500 active:text-slate-900"
                 }`}
               >
-                <Icon className="h-4 w-4" />
+                <span
+                  className={`flex h-7 w-12 items-center justify-center rounded-full transition-colors ${
+                    active ? "bg-teal-50" : ""
+                  }`}
+                >
+                  <Icon className="size-5" aria-hidden />
+                </span>
                 {item.label}
               </Link>
-            );
-          })}
-        </nav>
-        <div className="border-t border-slate-800 px-5 py-4 text-xs text-slate-500">
-          Frontend demo · localStorage
-        </div>
-      </aside>
-    </>
+            </li>
+          );
+        })}
+      </ul>
+    </nav>
   );
 }

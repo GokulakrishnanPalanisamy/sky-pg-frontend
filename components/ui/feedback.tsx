@@ -1,15 +1,19 @@
 "use client";
 
-import { X } from "lucide-react";
-import type { ReactNode } from "react";
+import { TriangleAlert } from "lucide-react";
+import { useState, type ReactNode } from "react";
 import { Button } from "@/components/ui/button";
+import { Sheet } from "@/components/ui/sheet";
 
 type ConfirmDialogProps = {
   open: boolean;
   title: string;
-  description: string;
+  description: ReactNode;
   confirmLabel?: string;
-  onConfirm: () => void;
+  tone?: "danger" | "primary";
+  /** When set, the action is blocked: the reason is shown and only "Close" is offered. */
+  blockedReason?: string;
+  onConfirm: () => Promise<void> | void;
   onClose: () => void;
 };
 
@@ -18,72 +22,99 @@ export function ConfirmDialog({
   title,
   description,
   confirmLabel = "Delete",
+  tone = "danger",
+  blockedReason,
   onConfirm,
   onClose,
 }: ConfirmDialogProps) {
-  if (!open) {
-    return null;
+  const [busy, setBusy] = useState(false);
+
+  async function handleConfirm() {
+    setBusy(true);
+    try {
+      await onConfirm();
+    } finally {
+      setBusy(false);
+    }
   }
 
   return (
-    <div className="fixed inset-0 z-[70] flex items-center justify-center p-4">
-      <button
-        type="button"
-        className="absolute inset-0 bg-slate-900/40"
-        aria-label="Close dialog"
-        onClick={onClose}
-      />
-      <div
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="confirm-title"
-        className="relative w-full max-w-md rounded-2xl bg-white p-6 shadow-xl"
-      >
-        <div className="mb-4 flex items-start justify-between gap-4">
-          <div>
-            <h2 id="confirm-title" className="text-lg font-semibold text-slate-900">
-              {title}
-            </h2>
-            <p className="mt-2 text-sm leading-6 text-slate-600">{description}</p>
-          </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="rounded-lg p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
-            aria-label="Close"
-          >
-            <X className="h-4 w-4" />
-          </button>
-        </div>
-        <div className="flex justify-end gap-2">
-          <Button type="button" variant="secondary" onClick={onClose}>
-            Cancel
+    <Sheet
+      open={open}
+      onClose={onClose}
+      variant="modal"
+      size="sm"
+      title={title}
+      icon={
+        <span
+          className={`flex size-10 items-center justify-center rounded-xl ${
+            tone === "danger" || blockedReason ? "bg-rose-50 text-rose-600" : "bg-teal-50 text-teal-700"
+          }`}
+        >
+          <TriangleAlert className="size-5" aria-hidden />
+        </span>
+      }
+      footer={
+        blockedReason ? (
+          <Button variant="secondary" onClick={onClose}>
+            Close
           </Button>
-          <Button type="button" variant="danger" onClick={onConfirm}>
-            {confirmLabel}
-          </Button>
+        ) : (
+          <>
+            <Button variant="secondary" onClick={onClose} disabled={busy}>
+              Cancel
+            </Button>
+            <Button
+              variant={tone === "danger" ? "danger" : "primary"}
+              onClick={handleConfirm}
+              loading={busy}
+            >
+              {confirmLabel}
+            </Button>
+          </>
+        )
+      }
+    >
+      <div className="space-y-3 px-5 py-4 text-sm leading-6 text-slate-600 md:px-6">
+        <div>{description}</div>
+        {blockedReason ? (
+          <p className="rounded-xl border border-amber-200 bg-amber-50 px-3.5 py-2.5 text-amber-900">
+            {blockedReason}
+          </p>
+        ) : null}
+      </div>
+    </Sheet>
+  );
+}
+
+type EmptyStateProps = {
+  icon: ReactNode;
+  title: string;
+  description: string;
+  action?: ReactNode;
+  compact?: boolean;
+};
+
+export function EmptyState({ icon, title, description, action, compact }: EmptyStateProps) {
+  return (
+    <div
+      className={`flex flex-col items-center justify-center rounded-2xl border border-dashed border-slate-200 bg-white px-6 text-center ${
+        compact ? "py-10" : "py-16"
+      }`}
+    >
+      <div className="relative mb-4">
+        <div className="absolute inset-0 scale-150 rounded-full bg-teal-50 blur-md" aria-hidden />
+        <div className="relative flex size-12 items-center justify-center rounded-2xl border border-slate-100 bg-white text-teal-600 shadow-[var(--shadow-card)] [&_svg]:size-5">
+          {icon}
         </div>
       </div>
+      <h3 className="text-base font-semibold text-slate-900">{title}</h3>
+      <p className="mt-1 max-w-sm text-sm leading-6 text-slate-500">{description}</p>
+      {action ? <div className="mt-5">{action}</div> : null}
     </div>
   );
 }
 
-export function EmptyState({
-  icon,
-  title,
-  description,
-}: {
-  icon: ReactNode;
-  title: string;
-  description: string;
-}) {
-  return (
-    <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-slate-200 bg-slate-50/70 px-6 py-14 text-center">
-      <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-white text-slate-500 shadow-sm">
-        {icon}
-      </div>
-      <h3 className="text-base font-semibold text-slate-900">{title}</h3>
-      <p className="mt-1 max-w-sm text-sm leading-6 text-slate-500">{description}</p>
-    </div>
-  );
+export function Skeleton({ className = "" }: { className?: string }) {
+  return <div className={`animate-pulse rounded-lg bg-slate-200/70 ${className}`} aria-hidden />;
 }
